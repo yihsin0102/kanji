@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日文漢字辨識與查詢</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-2xl font-bold mb-8 text-center">日文漢字辨識與查詢</h1>
+        
+        <div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden mb-8">
+            <div class="p-6">
+                <div class="mb-4">
+                    <h2 class="text-lg font-semibold mb-2">上傳圖片</h2>
+                    <input type="file" id="fileInput" accept="image/*" class="w-full">
+                </div>
+
+                <canvas id="canvas" style="display: none;"></canvas>
+            </div>
+        </div>
+
+        <div id="result" class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
+            <h2 class="text-lg font-semibold mb-4">辨識結果</h2>
+            <div id="textResult" class="mb-4"></div>
+            <div id="kanjiInfo" class="space-y-2"></div>
+        </div>
+    </div>
+
+    <script>
+        // 處理檔案上傳
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                processImage(e.target.files[0]);
+            }
+        });
+
+        // 處理圖片
+        async function processImage(blob) {
+            const formData = new FormData();
+            formData.append('file', blob);
+
+            try {
+                const response = await fetch('/api/ocr', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                if (data.text) {
+                    document.getElementById('textResult').textContent = `識別文字: ${data.text}`;
+                    queryKanji(data.text);
+                }
+            } catch (err) {
+                console.error('OCR 處理失敗:', err);
+            }
+        }
+
+        // 查詢漢字信息
+        async function queryKanji(text) {
+            try {
+                const response = await fetch(`/api/kanji/${encodeURIComponent(text)}`);
+                const data = await response.json();
+                
+                const kanjiInfo = document.getElementById('kanjiInfo');
+                kanjiInfo.innerHTML = '';
+                
+                if (data.data && data.data.length > 0) {
+                    data.data.forEach(item => {
+                        const readings = item.japanese.map(j => j.reading).filter(r => r);
+                        const meanings = item.senses[0].english_definitions;
+                        
+                        const div = document.createElement('div');
+                        div.className = 'bg-gray-50 p-4 rounded';
+                        div.innerHTML = `
+                            <div class="mb-2">
+                                <span class="font-bold">讀音：</span>
+                                ${readings.join(', ')}
+                            </div>
+                            <div>
+                                <span class="font-bold">含義：</span>
+                                ${meanings.join(', ')}
+                            </div>
+                        `;
+                        kanjiInfo.appendChild(div);
+                    });
+                }
+            } catch (err) {
+                console.error('漢字查詢失敗:', err);
+            }
+        }
+    </script>
+</body>
+</html>
