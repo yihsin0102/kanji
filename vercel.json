@@ -10,7 +10,11 @@
       {
         "src": "/(.*)",
         "dest": "/main.py"
-      }
+      },
+      {
+        "src": "Dockerfile",
+        "use": "@vercel/docker"
+      }  
     ]
   }
   
